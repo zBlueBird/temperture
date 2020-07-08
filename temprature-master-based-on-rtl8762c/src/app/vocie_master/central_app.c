@@ -32,19 +32,10 @@
 #include <bas_client.h>
 #include "data_uart_test.h"
 #include "voice_s2m.h"
-#include "voice_m2s.h"
 #include "app_section.h"
-#if FEATURE_SUPPORT_AUDIO_DOWN_STREAMING
-#include <audio_handle.h>
-#include <audio_loop_buffer.h>
-#include "alc5616.h"
-#endif
+#include "rtl876x.h"
 
-#include "key_handle.h"
-#include "voice_driver.h"
 #include "led_driver.h"
-
-#include "vs1053b.h"
 
 /** @defgroup  CENTRAL_APP Central Application
     * @brief This file handles BLE central application routines.
@@ -95,25 +86,7 @@ void app_handle_io_msg(T_IO_MSG io_msg)
             app_handle_gap_msg(&io_msg);
         }
         break;
-#if KEYSCAN_EN
-    case IO_MSG_TYPE_KEYSCAN:
-        {
-#if FEATURE_SUPPORT_NO_ACTION_DISCONN
-            /* key event to restart no_act_disconn_timer */
-            os_timer_restart(&no_act_disconn_timer, NO_ACTION_DISCON_TIMEOUT);
-#endif
 
-            if (io_msg.subtype == IO_MSG_KEYSCAN_ALLKEYRELEASE)
-            {
-                key_handle_release_event();
-            }
-            else if (io_msg.subtype == IO_MSG_KEYSCAN_RX_PKT)
-            {
-                key_handle_pressed_event(io_msg.u.buf);
-            }
-        }
-        break;
-#endif
 #if FEATURE_SUPPORT_AUDIO_DOWN_STREAMING
     case IO_MSG_TYPE_AUDIO:
         {
@@ -134,12 +107,6 @@ void app_handle_io_msg(T_IO_MSG io_msg)
     case IO_MSG_TYPE_UART:
         {
             uart_test_handle_uart_msg(io_msg);
-        }
-        break;
-    case IO_MSG_TYPE_VS1053B:
-        {
-            APP_PRINT_ERROR0("[app_handle_io_msg] vs1053b message received!");
-
         }
         break;
     default:
@@ -261,7 +228,8 @@ void app_handle_conn_state_evt(uint8_t conn_id, T_GAP_CONN_STATE new_state, uint
 
             app_global_data.device_ble_status = DEVICE_STATUS_CONNECTED;
 
-            //LED_BLINK(LED_1, LED_TYPE_BLINK_PAIR_SUCCESS, 3);
+            LED_BLINK(LED_1, LED_TYPE_BLINK_PAIR_SUCCESS, 3);
+            LED_BLINK(LED_1, LED_TYPE_ON, 0);
         }
         break;
 
@@ -948,6 +916,7 @@ T_APP_RESULT app_client_callback(T_CLIENT_ID client_id, uint8_t conn_id, void *p
                     p_value = p_voice_client_cb_data->cb_content.notify_data.pDataBuf;
                     APP_PRINT_INFO2("[Voice] HDL_VOICE_TYPE_CMD: value_size %d, value %b",
                                     value_size, TRACE_BINARY(value_size, p_value));
+                    LED_BLINK(LED_2, LED_TYPE_BLINK_DATA_REV, 1);
                     break;
                 default:
                     break;

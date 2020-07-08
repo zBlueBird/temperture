@@ -183,9 +183,11 @@ void uart_test_handle_uart_msg(T_IO_MSG io_driver_msg_recv)
 {
     UART_PacketTypeDef *pUartTestPacket = (UART_PacketTypeDef *)(io_driver_msg_recv.u.buf);
 
+//    APP_PRINT_INFO1("[Temp] uart_test_handle_uart_msg:  value %b",
+//                                    TRACE_BINARY(4, (uint8_t*)io_driver_msg_recv.u.buf));
     if (Packet_Decode(pUartTestPacket))
     {
-        uart_test_get_cmd_func(pUartTestPacket);
+        ;//uart_test_get_cmd_func(pUartTestPacket);
     }
 }
 /**

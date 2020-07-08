@@ -4,11 +4,8 @@
 #include "board.h"
 #include "central_app.h"
 #include "auto_test.h"
-#include "keyscan_driver.h"
 #include "app_msg.h"
 #include "os_timer.h"
-#include "key_handle.h"
-#include "vs1053b.h"
 
 #if AUTO_TEST_MODE
 
@@ -17,7 +14,7 @@
  *                              Global Variables
  *============================================================================*/
 volatile uint8_t g_auto_test_state = 0;
-T_KEYSCAN_FIFIO_DATA key_data;
+typedef void *TimerHandle_t;
 TimerHandle_t auto_test_timer;
 
 /*============================================================================*
@@ -275,6 +272,8 @@ void anto_test_timer_callback(TimerHandle_t p_timer)
             period = (uint32_t)(AUTO_TEST_TIMER_TICK / 4);
         }
 
+        //void UARTCmd_Send(void);
+        //UARTCmd_Send();
 
         APP_PRINT_INFO1("[Auto] g_auto_test_state = %d!", g_auto_test_state);
     }

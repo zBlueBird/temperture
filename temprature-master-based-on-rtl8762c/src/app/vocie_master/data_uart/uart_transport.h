@@ -30,7 +30,7 @@ extern "C" {
 #define UART_PRINT_LOG
 
 /* Configure loop queue parameters */
-#define UART_LOOP_QUEUE_MAX_SIZE             (512)
+#define UART_LOOP_QUEUE_MAX_SIZE             (10)
 #define UART_QUEUE_CAPABILITY                (UART_LOOP_QUEUE_MAX_SIZE-1)
 /* Configure UART packet buffer length */
 #define CMD_SIZE                        50
@@ -54,7 +54,11 @@ typedef struct
 /* Packet decode status */
 typedef enum
 {
+    WaitHeader0,
+    WaitHeader1,
+    WaitHeader2,
     WaitHeader,
+
     WaitCMD,
     WaitParams,
     WaitCRC,

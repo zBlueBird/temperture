@@ -13,7 +13,7 @@
 typedef   uint32_t      LED_TYPE   ;
 #define   LED_TYPE_IDLE                      0
 #define   LED_TYPE_BLINK_LOW_POWER          (1)
-#define   LED_TYPE_BLINK_IR_LEARN_SUCCESS   (2)
+#define   LED_TYPE_BLINK_DATA_REV           (2)
 #define   LED_TYPE_BLINK_IR_LEARN_WAITING   (3)
 #define   LED_TYPE_BLINK_IR_LEARN_MODE      (4)
 #define   LED_TYPE_BLINK_PAIR_SCAN          (5)
@@ -23,7 +23,7 @@ typedef   uint32_t      LED_TYPE   ;
 
 /*led bit map 32bits, High bits(low priority) ---  Low bits(high priority) */
 #define LED_BIT_MAP_LOW_POWER           (0x00000001)
-#define LED_BIT_MAP_IR_LEARN_SUCCESS    (0x0f0f0f0f)
+#define LED_BIT_MAP_DATA_REV            (0x00000003)
 #define LED_BIT_MAP_IR_LEARN_WAITING    (0xffffffff)
 #define LED_BIT_MAP_IR_LEARN_MODE       (0x00FF00FF)
 #define LED_BIT_MAP_PAIR_SCAN           (0x00050005)

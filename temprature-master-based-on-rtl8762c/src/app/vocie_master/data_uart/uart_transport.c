@@ -33,6 +33,10 @@
 #define PACKET_HEAD_LEN                 ((uint8_t)0x01)
 #define OPCODE_LEN                      ((uint8_t)0x02)
 #define CRC_DATA_LEN                    ((uint16_t)0x02)
+
+#define PACKET_HEAD_B0                  ((uint8_t)'A')
+#define PACKET_HEAD_B1                  ((uint8_t)'T')
+#define PACKET_HEAD_B2                  ((uint8_t)'+')
 /* Configure data uart receive trigger level */
 #define UART_RX_TRIGGER_LEVEL           UART_RX_FIFO_TRIGGER_LEVEL_4BYTE
 #define UART_RX_TRIGGER_VALUE           4
@@ -75,21 +79,106 @@ static void LoopQueueInit(UartLoopQueue_TypeDef *pQueueStruct)
         pQueueStruct->buf[i] = 0;
     }
 }
+static inline bool LoopQueueIsEmpty(UartLoopQueue_TypeDef *pQueueStruct)
+{
+    if (((pQueueStruct->ReadIndex + 1)&UART_QUEUE_CAPABILITY) == pQueueStruct->WriteIndex)
+    {
+        return true;
+    }
+    return false;
+#if 0
+    if (size > UART_LOOP_QUEUE_MAX_SIZE)
+    {
+        return true;
+    }
 
+    uint16_t pReadIdx = (pQueueStruct->ReadIndex + size) & UART_QUEUE_CAPABILITY;
+    if (pReadIdx >= pQueueStruct->WriteIndex)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+#endif
+}
 /**
   * @brief  check loop queue if full or not.
   * @param  pQueueStruct: point to loop queue dta struct.
   * @retval The new state of loop queue (full:TRUE, not full:FALSE).
   */
-static inline bool LoopQueueIsFull(UartLoopQueue_TypeDef *pQueueStruct, uint16_t write_size)
+static inline bool LoopQueueIsFull(UartLoopQueue_TypeDef *pQueueStruct)
 {
-    if (((pQueueStruct->WriteIndex + write_size) & UART_QUEUE_CAPABILITY) == pQueueStruct->ReadIndex)
+//    if (write_size > UART_LOOP_QUEUE_MAX_SIZE)
+//          return true;
+
+    if (pQueueStruct->ReadIndex == pQueueStruct->WriteIndex)
     {
-        UART_DBG_BUFFER(MODULE_APP, LEVEL_ERROR, "buf is OverFlow!", 0);
-        pQueueStruct->OverFlow = true;
         return true;
     }
     return false;
+
+#if 0
+    if (pQueueStruct->WriteIndex < pQueueStruct->ReadIndex)
+    {
+        if (pQueueStruct->WriteIndex + write_size > pQueueStruct->ReadIndex)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+    else
+    {
+        if (pQueueStruct->WriteIndex + write_size - UART_QUEUE_CAPABILITY > pQueueStruct->ReadIndex)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+#endif
+
+//    if (((pQueueStruct->WriteIndex + write_size) & UART_QUEUE_CAPABILITY) == pQueueStruct->ReadIndex)
+//    {
+//        UART_DBG_BUFFER(MODULE_APP, LEVEL_ERROR, "buf is OverFlow!", 0);
+//        pQueueStruct->OverFlow = true;
+//        return true;
+//    }
+//    return false;
+}
+
+static inline bool LoopQueueIn(UartLoopQueue_TypeDef *pQueueStruct, uint8_t *pBuf, uint16_t size)
+{
+    for (uint8_t index = 0; index < size; index ++)
+    {
+        pQueueStruct->buf[pQueueStruct->WriteIndex] = *(uint8_t *)(pBuf + index);
+        pQueueStruct->WriteIndex = (pQueueStruct->WriteIndex + 1) & UART_QUEUE_CAPABILITY;
+        if (LoopQueueIsFull(pQueueStruct) == true)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+static inline bool LoopQueueOut(UartLoopQueue_TypeDef *pQueueStruct, uint8_t *pBuf, uint16_t size)
+{
+    for (uint8_t index = 0; index < size; index ++)
+    {
+        *(uint8_t *)(pBuf + index) = pQueueStruct->buf[pQueueStruct->ReadIndex];
+        pQueueStruct->ReadIndex = (pQueueStruct->ReadIndex + 1) & UART_QUEUE_CAPABILITY;
+        if (LoopQueueIsEmpty(pQueueStruct) == true)
+        {
+            return false;
+        }
+    }
+    return true;
 }
 
 #if 0
@@ -201,7 +290,7 @@ void UartTransport_Init(void)
     RamVectorTableUpdate(Uart0_VECTORn, DataUartTestIntrHandler);
 
     /* Initialize Data UART peripheral */
-    DataUARTInit(CHANGE_BAUDRATE_OPTION_2M);
+    DataUARTInit(CHANGE_BAUDRATE_OPTION_115200);
 }
 
 /**
@@ -223,15 +312,14 @@ bool UARTPacket_Decode(UartLoopQueue_TypeDef *pQueueStruct, UART_PacketTypeDef *
     {
         switch (pPacket->Status)
         {
-        case WaitHeader:
+        case WaitHeader0:
             {
                 /* Header: one byte */
-                if (pQueueStruct->buf[pQueueStruct->ReadIndex] == PACKET_HEAD)
+                if (pQueueStruct->buf[pQueueStruct->ReadIndex] == PACKET_HEAD_B0)
                 {
-                    pPacket->Buf[pPacket->BufIndex++] = pQueueStruct->buf[pQueueStruct->ReadIndex++];
-
+                    //pPacket->Buf[pPacket->BufIndex++] = pQueueStruct->buf[pQueueStruct->ReadIndex++];
                     pQueueStruct->ReadIndex &= UART_QUEUE_CAPABILITY;
-                    pPacket->Status = WaitCMD;
+                    pPacket->Status = WaitHeader1;
                 }
                 else
                 {
@@ -241,6 +329,40 @@ bool UARTPacket_Decode(UartLoopQueue_TypeDef *pQueueStruct, UART_PacketTypeDef *
                 }
                 break;
             }
+        case WaitHeader1:
+            {
+                /* Header: one byte */
+                if (pQueueStruct->buf[pQueueStruct->ReadIndex] == PACKET_HEAD_B1)
+                {
+                    //pPacket->Buf[pPacket->BufIndex++] = pQueueStruct->buf[pQueueStruct->ReadIndex++];
+                    pQueueStruct->ReadIndex &= UART_QUEUE_CAPABILITY;
+                    pPacket->Status = WaitHeader2;
+                }
+                else
+                {
+                    pQueueStruct->ReadIndex++;
+                    UART_DBG_BUFFER(MODULE_APP, LEVEL_ERROR, "Error header = 0x%x!", 1,
+                                    pQueueStruct->buf[pQueueStruct->ReadIndex]);
+                }
+            }
+            break;
+        case WaitHeader2:
+            {
+                /* Header: one byte */
+                if (pQueueStruct->buf[pQueueStruct->ReadIndex] == PACKET_HEAD_B2)
+                {
+                    //pPacket->Buf[pPacket->BufIndex++] = pQueueStruct->buf[pQueueStruct->ReadIndex++];
+                    pQueueStruct->ReadIndex &= UART_QUEUE_CAPABILITY;
+                    pPacket->Status = WaitHeader2;
+                }
+                else
+                {
+                    pQueueStruct->ReadIndex++;
+                    UART_DBG_BUFFER(MODULE_APP, LEVEL_ERROR, "Error header = 0x%x!", 1,
+                                    pQueueStruct->buf[pQueueStruct->ReadIndex]);
+                }
+            }
+            break;
         case WaitCMD:
             {
                 while (pQueueStruct->ReadIndex != pQueueStruct->WriteIndex)
@@ -376,6 +498,16 @@ void UARTCmd_Response(uint16_t opcode, uint8_t status, uint8_t *pPayload, uint32
     while (UART_GetFlagState(UART, UART_FLAG_THR_TSR_EMPTY) != SET);
 }
 
+void UARTCmd_Send(void)
+{
+    uint8_t buf[12] = {0x41, 0x54, 0x2B, 0x43, 0x57, 0x4D, 0x4F, 0x44, 0x45, 0x3F, 0x0D, 0x0A};
+
+    /* send left bytes */
+    UART_SendData(UART, buf, 12);
+    /* wait tx fifo empty */
+    while (UART_GetFlagState(UART, UART_FLAG_THR_TSR_EMPTY) != SET);
+}
+
 /**
   * @brief  decode uart packet.
   * @param  pPacket: point to UART packet struct.
@@ -383,6 +515,11 @@ void UARTCmd_Response(uint16_t opcode, uint8_t status, uint8_t *pPayload, uint32
   */
 bool Packet_Decode(UART_PacketTypeDef *pPacket)
 {
+//    for (; UartLoopQueue.ReadIndex != UartLoopQueue.WriteIndex;)
+//    {
+//            APP_PRINT_INFO1("[Temp] => %#x", UartLoopQueue.buf[UartLoopQueue.ReadIndex]);
+//            UartLoopQueue.ReadIndex = (UartLoopQueue.ReadIndex + 1) % UART_LOOP_QUEUE_MAX_SIZE;
+//    }
     return UARTPacket_Decode(&UartLoopQueue, pPacket);
 }
 
@@ -433,7 +570,7 @@ void DataUartTestIntrHandler(void)
     /* rx data valiable */
     case UART_INT_ID_RX_LEVEL_REACH:
         {
-            if (!LoopQueueIsFull(&UartLoopQueue, UART_RX_TRIGGER_VALUE))
+            if (!LoopQueueIsFull(&UartLoopQueue))
             {
                 UartLoopQueue.WriteIndex &= UART_QUEUE_CAPABILITY;
 
@@ -470,7 +607,7 @@ void DataUartTestIntrHandler(void)
             while (UART_GetFlagState(UART, UART_FLAG_RX_DATA_RDY) == SET)
             {
 
-                if (!LoopQueueIsFull(&UartLoopQueue, 1))
+                if (!LoopQueueIsFull(&UartLoopQueue))
                 {
                     UartLoopQueue.WriteIndex &= UART_QUEUE_CAPABILITY;
                     UART_ReceiveData(UART, &UartLoopQueue.buf[UartLoopQueue.WriteIndex++], 1);

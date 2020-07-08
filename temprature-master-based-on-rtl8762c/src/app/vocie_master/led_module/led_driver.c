@@ -284,9 +284,9 @@ void led_ctrl_timer_cb(TimerHandle_t pxTimer)
                 map = (LED_TYPE)LED_BIT_MAP_IR_LEARN_WAITING;
             }
             break;
-        case LED_TYPE_BLINK_IR_LEARN_SUCCESS:
+        case LED_TYPE_BLINK_DATA_REV:
             {
-                map = (LED_TYPE)LED_BIT_MAP_IR_LEARN_SUCCESS;
+                map = (LED_TYPE)LED_BIT_MAP_DATA_REV;
             }
             break;
         case LED_TYPE_BLINK_IR_LEARN_MODE:

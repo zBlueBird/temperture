@@ -532,21 +532,6 @@
           </Files>
         </Group>
         <Group>
-          <GroupName>key</GroupName>
-          <Files>
-            <File>
-              <FileName>key_handle.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\..\..\src\app\vocie_master\key_module\key_handle.c</FilePath>
-            </File>
-            <File>
-              <FileName>keyscan_driver.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\..\..\src\app\vocie_master\key_module\keyscan_driver.c</FilePath>
-            </File>
-          </Files>
-        </Group>
-        <Group>
           <GroupName>app</GroupName>
           <Files>
             <File>
@@ -577,46 +562,6 @@
           </Files>
         </Group>
         <Group>
-          <GroupName>audio</GroupName>
-          <Files>
-            <File>
-              <FileName>alc5616.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\..\..\src\app\vocie_master\audio_module\alc5616.c</FilePath>
-            </File>
-            <File>
-              <FileName>alc5628.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\..\..\src\app\vocie_master\audio_module\alc5628.c</FilePath>
-            </File>
-            <File>
-              <FileName>audio_bi_buffer.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\..\..\src\app\vocie_master\audio_module\audio_bi_buffer.c</FilePath>
-            </File>
-            <File>
-              <FileName>audio_handle.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\..\..\src\app\vocie_master\audio_module\audio_handle.c</FilePath>
-            </File>
-            <File>
-              <FileName>audio_hd_detection.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\..\..\src\app\vocie_master\audio_module\audio_hd_detection.c</FilePath>
-            </File>
-            <File>
-              <FileName>audio_loop_buffer.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\..\..\src\app\vocie_master\audio_module\audio_loop_buffer.c</FilePath>
-            </File>
-            <File>
-              <FileName>audio_trans.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\..\..\src\app\vocie_master\audio_module\audio_trans.c</FilePath>
-            </File>
-          </Files>
-        </Group>
-        <Group>
           <GroupName>auto_test</GroupName>
           <Files>
             <File>
@@ -629,16 +574,6 @@
         <Group>
           <GroupName>voice</GroupName>
           <Files>
-            <File>
-              <FileName>voice_driver.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\..\..\src\app\vocie_master\voice_module\voice_driver.c</FilePath>
-            </File>
-            <File>
-              <FileName>voice_m2s.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\..\..\src\app\vocie_master\voice_module\voice_m2s.c</FilePath>
-            </File>
             <File>
               <FileName>voice_s2m.c</FileName>
               <FileType>1</FileType>
@@ -673,16 +608,6 @@
               <FileName>user_cmd.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\..\src\app\vocie_master\data_uart\user_cmd.c</FilePath>
-            </File>
-          </Files>
-        </Group>
-        <Group>
-          <GroupName>vs1053b</GroupName>
-          <Files>
-            <File>
-              <FileName>vs1053b.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\..\..\src\app\vocie_master\vs1053b\vs1053b.c</FilePath>
             </File>
           </Files>
         </Group>

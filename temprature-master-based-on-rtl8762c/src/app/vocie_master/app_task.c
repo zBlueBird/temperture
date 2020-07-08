@@ -32,11 +32,6 @@
 #include "auto_test.h"
 
 
-#if VS1053B_EN
-#include "vs1053b.h"
-#include "data_uart_test.h"
-#endif
-
 /** @defgroup  CENTRAL_APP_TASK Central App Task
     * @brief This file handles the implementation of application task related functions.
     *
@@ -102,59 +97,8 @@ void app_task_init()
     os_task_create(&app_task_handle, "app", app_main_task, 0, APP_TASK_STACK_SIZE,
                    APP_TASK_PRIORITY);
 
-//    os_task_create(&vs1053b_task_handle, "vs1053b", vs1053b_task, 0, VS1053B_TASK_STACK_SIZE,
-//                   VS1053B_TASK_PRIORITY);
 }
-
-void vs1053b_task(void *p_param)
-{
-    uint16_t len = 0;
-    T_IO_MSG bee_io_msg;
-#if VS1053B_EN
-    /* Initialize Data UART peripheral */
-    DataUARTInit(CHANGE_BAUDRATE_OPTION_2M);
-    vs1053b_gpio_init();
-    vs1053b_driver_spi_init();
-
-    VS_Sine_Test();
-
-    os_delay(6000);
-    vs1053b_recoder_start(4);
-
-
-#endif
-
-    while (true)
-    {
-        if (app_global_data.device_ble_status == DEVICE_STATUS_PAIRED)
-        {
-
-            len = vs1053b_recoder_check_buffer_length();
-            //APP_PRINT_INFO1("[Auto] check buffer length = %d!", len);
-            if (len > 10)
-            {
-                //APP_PRINT_INFO0("[Auto] check buffer length success");
-                vs1053b_read_buffer(10);
-                if (key_queue_check_level(VOICE_GDMA_FRAME_SIZE))
-                {
-//                    uint8_t buf[VOICE_GDMA_FRAME_SIZE] ;
-
-//                    key_queue_out(buf, VOICE_GDMA_FRAME_SIZE);
-//                    data_uart_send(buf, VOICE_GDMA_FRAME_SIZE);
-                    APP_PRINT_INFO0("[Auto] vs1053b task send msg");
-                    bee_io_msg.type = IO_MSG_TYPE_GDMA;
-                    if (false == app_send_msg_to_apptask(&bee_io_msg))
-                    {
-                        APP_PRINT_ERROR0("[Auto] vs1053b voice buffer check failed!");
-                    }
-                }
-            }
-            //os_delay(10);
-        }
-    }
-}
-/**
- * @brief        App task to handle events & messages
+/* @brief        App task to handle events & messages
  * @param[in]    p_param    Parameters sending to the task
  * @return       void
  */
@@ -168,8 +112,9 @@ void app_main_task(void *p_param)
     gap_start_bt_stack(evt_queue_handle, io_queue_handle, MAX_NUMBER_OF_GAP_MESSAGE);
 
     //data_uart_init(evt_queue_handle, io_queue_handle);
-    //UartTransport_Init();
+    UartTransport_Init();
     //user_cmd_init(&user_cmd_if, "central");
+
 
     driver_init();
 

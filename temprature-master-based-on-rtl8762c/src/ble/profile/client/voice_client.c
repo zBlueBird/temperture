@@ -17,7 +17,6 @@
 #include <trace.h>
 #include <os_mem.h>
 #include "voice_s2m.h"
-#include "voice_m2s.h"
 
 /********************************************************************************************************
 * local static variables defined here, only used in this source file.
@@ -502,14 +501,14 @@ static void voice_client_write_result_cb(uint8_t conn_id, T_GATT_WRITE_TYPE type
     PROFILE_PRINT_INFO2("voice_client_write_result_cb: handle 0x%x, cause 0x%x", handle, cause);
     cb_data.cb_content.write_result.cause = cause;
 
-    if (handle == VOCIE_DATA_CHAR_HANDLE)
-    {
-        cb_data.cb_content.write_result.type = VOICE_WRITE_DATA;
-    }
-    else
-    {
-        return;
-    }
+//    if (handle == VOICE_DATA_HANDLE)
+//    {
+//        cb_data.cb_content.write_result.type = VOICE_WRITE_DATA;
+//    }
+//    else
+//    {
+//        return;
+//    }
 
     if (voice_client_cb)
     {

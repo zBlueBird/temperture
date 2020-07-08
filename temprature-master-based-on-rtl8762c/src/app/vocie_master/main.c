@@ -38,25 +38,9 @@
 #include <audio_handle.h>
 #endif
 
-#include "audio_hd_detection.h"
-
-#if KEYSCAN_EN
-#include "keyscan_driver.h"
-#include "rtl876x_keyscan.h"
-#endif
-
-#if RCU_VOICE_EN
-#include "voice_driver.h"
-#endif
-
 #if LED_EN
 #include "led_driver.h"
 #endif
-
-//#if VS1053B_EN
-//#include "vs1053b.h"
-//#include "data_uart_test.h"
-//#endif
 
 /** @defgroup  CENTRAL_DEMO_MAIN Central Main
     * @brief Main file to initialize hardware and BT stack and start task scheduling
@@ -190,15 +174,6 @@ void driver_init(void)
 
     //audio_handle_enable_power();
 
-#if KEYSCAN_EN
-    keyscan_init_data();
-    keyscan_init_pad_config();
-    keyscan_pinmux_config();
-    keyscan_init_driver(KeyScan_Debounce_Enable);
-    keyscan_nvic_config();
-    keyscan_init_timer();
-#endif
-
     app_global_data.mtu_size = 23;
 
 #if RCU_VOICE_EN
@@ -209,17 +184,6 @@ void driver_init(void)
     led_init_timer();
 #endif
 
-//#if VS1053B_EN
-//    /* Initialize Data UART peripheral */
-//    DataUARTInit(CHANGE_BAUDRATE_OPTION_2M);
-//    vs1053b_gpio_init();
-//    vs1053b_driver_spi_init();
-
-//    VS_Sine_Test();
-//    vs1053b_recoder_start(4);
-//
-//
-//#endif
 }
 
 /**

@@ -24,7 +24,6 @@ extern "C" {
  *============================================================================*/
 #include <profile_client.h>
 #include <app_msg.h>
-#include <audio_trans.h>
 
 /*============================================================================*
  *                              Variables
@@ -62,7 +61,7 @@ typedef struct
     uint8_t mtu_size;  /* to indicate the current mtu size */
     uint8_t pair_failed_retry_cnt;  /* to indicate the retry cnt for pair failed scenario */
     T_DEVICE_STATUS device_ble_status;
-    T_AUDIO_FREQ cur_audio_sample_freq;  /* to indicate current audio sample frequency */
+    //T_AUDIO_FREQ cur_audio_sample_freq;  /* to indicate current audio sample frequency */
     uint16_t conn_interval;  /* to indicate rcu connect interval */
     uint16_t conn_latency;   /* to indicate rcu connect latency */
     uint16_t conn_supervision_timeout; /* to indicate rcu supervision time out */
