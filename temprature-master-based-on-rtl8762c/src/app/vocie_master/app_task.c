@@ -118,7 +118,7 @@ void app_main_task(void *p_param)
 
     driver_init();
 
-    auto_test_init();
+    //auto_test_init();
 
 
     while (true)

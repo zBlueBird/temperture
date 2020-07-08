@@ -23,9 +23,12 @@
 #include <app_task.h>
 #include <app_section.h>
 
-#if 1//MP_TEST_MODE_SUPPORT_DATA_UART_TEST
+#if MP_TEST_MODE_SUPPORT_DATA_UART_TEST
 
-/* Defines -------------------------------------------------------------------*/
+
+/*============================================================================*
+ *                              Micro
+ *============================================================================*/
 
 /* Protocol defines ------------------------------------------------------------*/
 /* Protocol header define */
@@ -34,12 +37,13 @@
 #define OPCODE_LEN                      ((uint8_t)0x02)
 #define CRC_DATA_LEN                    ((uint16_t)0x02)
 
-#define PACKET_HEAD_B0                  ((uint8_t)'A')
-#define PACKET_HEAD_B1                  ((uint8_t)'T')
-#define PACKET_HEAD_B2                  ((uint8_t)'+')
 /* Configure data uart receive trigger level */
 #define UART_RX_TRIGGER_LEVEL           UART_RX_FIFO_TRIGGER_LEVEL_4BYTE
 #define UART_RX_TRIGGER_VALUE           4
+/*============================================================================*
+ *                              Global Variables
+ *============================================================================*/
+
 
 /* Globals ------------------------------------------------------------------ */
 
@@ -48,16 +52,33 @@ UartLoopQueue_TypeDef   UartLoopQueue;
 /* UART packet data structure */
 UART_PacketTypeDef UART_Packet;
 
+const stg_AT_Cmd AtCMD[] =
+{
+    {"AT+CWMODE?", "OK"},
+    {"AT+CWLAP", "OK"},//scan wifi
+    {"AT+CWJAP=\"Yuyin01\",\"33334444\"", "OK"},
+    {"AT+CIPMUX=1", "OK"},
+    {"AT+CIPSERVER=1,5000", "OK"},
+    {"AT+CIFSR", "OK"},
+    {"", "0,CONNECT"},
+    {"AT+CIPSEND=0,4", "OK"},
+    {"AT+RST", NULL},
+};
+
 /* For CRC check */
 #define  FAR
 typedef unsigned char    UCHAR, BYTE, * PUCHAR, * PBYTE;
 typedef unsigned short   WORD, USHORT, * PUSHORT, * PWORD;
 typedef unsigned char    FAR *LPBYTE;
 
+/*============================================================================*
+ *                              Local Fucntions
+ *============================================================================*/
 /* CRC check function */
 extern uint16_t btxfcs(WORD fcs, BYTE FAR *cp, WORD len);
 
 void DataUartTestIntrHandler(void);
+const uint8_t LoopQueueFindString(UartLoopQueue_TypeDef *pQueueStruct, const char *sub);
 
 /**
   * @brief  Initializes loop queue to their default reset values.
@@ -81,27 +102,12 @@ static void LoopQueueInit(UartLoopQueue_TypeDef *pQueueStruct)
 }
 static inline bool LoopQueueIsEmpty(UartLoopQueue_TypeDef *pQueueStruct)
 {
-    if (((pQueueStruct->ReadIndex + 1)&UART_QUEUE_CAPABILITY) == pQueueStruct->WriteIndex)
+    if (((pQueueStruct->ReadIndex)&UART_QUEUE_CAPABILITY) == pQueueStruct->WriteIndex)
     {
         return true;
     }
     return false;
-#if 0
-    if (size > UART_LOOP_QUEUE_MAX_SIZE)
-    {
-        return true;
-    }
 
-    uint16_t pReadIdx = (pQueueStruct->ReadIndex + size) & UART_QUEUE_CAPABILITY;
-    if (pReadIdx >= pQueueStruct->WriteIndex)
-    {
-        return true;
-    }
-    else
-    {
-        return false;
-    }
-#endif
 }
 /**
   * @brief  check loop queue if full or not.
@@ -113,44 +119,12 @@ static inline bool LoopQueueIsFull(UartLoopQueue_TypeDef *pQueueStruct)
 //    if (write_size > UART_LOOP_QUEUE_MAX_SIZE)
 //          return true;
 
-    if (pQueueStruct->ReadIndex == pQueueStruct->WriteIndex)
+    if (((pQueueStruct->ReadIndex + 1) & UART_QUEUE_CAPABILITY) == pQueueStruct->WriteIndex)
     {
         return true;
     }
     return false;
 
-#if 0
-    if (pQueueStruct->WriteIndex < pQueueStruct->ReadIndex)
-    {
-        if (pQueueStruct->WriteIndex + write_size > pQueueStruct->ReadIndex)
-        {
-            return true;
-        }
-        else
-        {
-            return false;
-        }
-    }
-    else
-    {
-        if (pQueueStruct->WriteIndex + write_size - UART_QUEUE_CAPABILITY > pQueueStruct->ReadIndex)
-        {
-            return true;
-        }
-        else
-        {
-            return false;
-        }
-    }
-#endif
-
-//    if (((pQueueStruct->WriteIndex + write_size) & UART_QUEUE_CAPABILITY) == pQueueStruct->ReadIndex)
-//    {
-//        UART_DBG_BUFFER(MODULE_APP, LEVEL_ERROR, "buf is OverFlow!", 0);
-//        pQueueStruct->OverFlow = true;
-//        return true;
-//    }
-//    return false;
 }
 
 static inline bool LoopQueueIn(UartLoopQueue_TypeDef *pQueueStruct, uint8_t *pBuf, uint16_t size)
@@ -293,164 +267,6 @@ void UartTransport_Init(void)
     DataUARTInit(CHANGE_BAUDRATE_OPTION_115200);
 }
 
-/**
-  * @brief  decode uart packet.
-  * @param  pPacket: point to UART packet struct.
-  * @retval The decoded status of a entire packet.
-  */
-bool UARTPacket_Decode(UartLoopQueue_TypeDef *pQueueStruct, UART_PacketTypeDef *pPacket)
-{
-    bool PaketComplete = false;
-    uint16_t opcode = 0;
-    uint8_t param_len = 0;
-
-    UART_DBG_BUFFER(MODULE_UART, LEVEL_INFO, "[UARTPacket_Decode] decode uart packet", 0);
-    UART_DBG_BUFFER(MODULE_UART, LEVEL_INFO, "[UARTPacket_Decode] %d %d", 2, pQueueStruct->ReadIndex,
-                    pQueueStruct->WriteIndex);
-
-    while (pQueueStruct->ReadIndex != pQueueStruct->WriteIndex)
-    {
-        switch (pPacket->Status)
-        {
-        case WaitHeader0:
-            {
-                /* Header: one byte */
-                if (pQueueStruct->buf[pQueueStruct->ReadIndex] == PACKET_HEAD_B0)
-                {
-                    //pPacket->Buf[pPacket->BufIndex++] = pQueueStruct->buf[pQueueStruct->ReadIndex++];
-                    pQueueStruct->ReadIndex &= UART_QUEUE_CAPABILITY;
-                    pPacket->Status = WaitHeader1;
-                }
-                else
-                {
-                    pQueueStruct->ReadIndex++;
-                    UART_DBG_BUFFER(MODULE_APP, LEVEL_ERROR, "Error header = 0x%x!", 1,
-                                    pQueueStruct->buf[pQueueStruct->ReadIndex]);
-                }
-                break;
-            }
-        case WaitHeader1:
-            {
-                /* Header: one byte */
-                if (pQueueStruct->buf[pQueueStruct->ReadIndex] == PACKET_HEAD_B1)
-                {
-                    //pPacket->Buf[pPacket->BufIndex++] = pQueueStruct->buf[pQueueStruct->ReadIndex++];
-                    pQueueStruct->ReadIndex &= UART_QUEUE_CAPABILITY;
-                    pPacket->Status = WaitHeader2;
-                }
-                else
-                {
-                    pQueueStruct->ReadIndex++;
-                    UART_DBG_BUFFER(MODULE_APP, LEVEL_ERROR, "Error header = 0x%x!", 1,
-                                    pQueueStruct->buf[pQueueStruct->ReadIndex]);
-                }
-            }
-            break;
-        case WaitHeader2:
-            {
-                /* Header: one byte */
-                if (pQueueStruct->buf[pQueueStruct->ReadIndex] == PACKET_HEAD_B2)
-                {
-                    //pPacket->Buf[pPacket->BufIndex++] = pQueueStruct->buf[pQueueStruct->ReadIndex++];
-                    pQueueStruct->ReadIndex &= UART_QUEUE_CAPABILITY;
-                    pPacket->Status = WaitHeader2;
-                }
-                else
-                {
-                    pQueueStruct->ReadIndex++;
-                    UART_DBG_BUFFER(MODULE_APP, LEVEL_ERROR, "Error header = 0x%x!", 1,
-                                    pQueueStruct->buf[pQueueStruct->ReadIndex]);
-                }
-            }
-            break;
-        case WaitCMD:
-            {
-                while (pQueueStruct->ReadIndex != pQueueStruct->WriteIndex)
-                {
-                    /* Obtain command field data */
-                    pPacket->Buf[pPacket->BufIndex++] = pQueueStruct->buf[pQueueStruct->ReadIndex++];
-                    pQueueStruct->ReadIndex &= UART_QUEUE_CAPABILITY;
-
-                    /* CMD: two bytes */
-                    if (pPacket->BufIndex == (PACKET_HEAD_LEN + OPCODE_LEN))
-                    {
-                        opcode = (pPacket->Buf[pPacket->BufIndex - 1] << 8) + pPacket->Buf[pPacket->BufIndex - 2];
-
-                        if ((opcode >= UART_FN_BEGIN) && (opcode < UART_FN_END))
-                        {
-                            if (uart_test_func_map[opcode & UART_FN_MASK].fncb != NULL)
-                            {
-                                param_len = uart_test_func_map[opcode & UART_FN_MASK].param_len;
-                            }
-                            else
-                            {
-                                param_len = 0;
-                            }
-                        }
-                        else
-                        {
-                            param_len = 0;
-                        }
-                        pPacket->Status = WaitParams;
-                        break;
-                    }
-                }
-            }
-
-        case WaitParams:
-            {
-                // Add application code here if have parameter
-                while (param_len)
-                {
-                    /* Obtain parameter field data */
-                    pPacket->Buf[pPacket->BufIndex++] = pQueueStruct->buf[pQueueStruct->ReadIndex++];
-                    pQueueStruct->ReadIndex &= UART_QUEUE_CAPABILITY;
-                    param_len--;
-                }
-                pPacket->Status = WaitCRC;
-                break;
-            }
-
-        case WaitCRC:
-            {
-                while (pQueueStruct->ReadIndex != pQueueStruct->WriteIndex)
-                {
-                    pPacket->Buf[pPacket->BufIndex++] = pQueueStruct->buf[pQueueStruct->ReadIndex++];
-                    pPacket->CRCLen++;
-
-                    if (pPacket->CRCLen >= CRC_DATA_LEN)
-                    {
-                        break;
-                    }
-                }
-
-                /* CRC check */
-                if (btxfcs(0, pPacket->Buf, (pPacket->BufIndex) - CRC_DATA_LEN) == ((pPacket->Buf[pPacket->BufIndex
-                                                                                     - 1] << 8) + pPacket->Buf[pPacket->BufIndex - 2]))
-                {
-                    PaketComplete = true;
-                }
-                else
-                {
-                    // CRC check error
-                    UART_DBG_BUFFER(MODULE_APP, LEVEL_ERROR, "CRC check Error!", 0);
-                }
-
-                /* Reset decoding status */
-                UARTPacketStructInit(pPacket);
-                LoopQueueInit(&UartLoopQueue);
-                return PaketComplete;
-            }
-        default:
-            {
-                break;
-            }
-        }
-    }
-
-    LoopQueueInit(&UartLoopQueue);
-    return PaketComplete;
-}
 
 /**
   * @brief  Response of uart command.
@@ -515,12 +331,76 @@ void UARTCmd_Send(void)
   */
 bool Packet_Decode(UART_PacketTypeDef *pPacket)
 {
-//    for (; UartLoopQueue.ReadIndex != UartLoopQueue.WriteIndex;)
+//    for (; !LoopQueueIsEmpty(&UartLoopQueue);)
 //    {
 //            APP_PRINT_INFO1("[Temp] => %#x", UartLoopQueue.buf[UartLoopQueue.ReadIndex]);
-//            UartLoopQueue.ReadIndex = (UartLoopQueue.ReadIndex + 1) % UART_LOOP_QUEUE_MAX_SIZE;
+//            UartLoopQueue.ReadIndex = (UartLoopQueue.ReadIndex + 1) % UART_QUEUE_CAPABILITY;
 //    }
-    return UARTPacket_Decode(&UartLoopQueue, pPacket);
+    const uint8_t LoopQueueFindString(UartLoopQueue_TypeDef * pQueueStruct, const char *sub);
+    if (0 == LoopQueueFindString(&UartLoopQueue, "AT+CWJAP=\"Yuyin01\",\"33334444\""))
+    {
+        APP_PRINT_INFO0("Packet_Decode success");
+    }
+    else
+    {
+        APP_PRINT_INFO0("Packet_Decode failed");
+    }
+
+    LoopQueueInit(&UartLoopQueue);
+    return true;//UARTPacket_Decode(&UartLoopQueue, pPacket);
+}
+
+//查找字符串中的某个字符串的位置
+const uint8_t LoopQueueFindString(UartLoopQueue_TypeDef *pQueueStruct, const char *sub)
+{
+    const char *bp;
+    const char *sp;
+    if (pQueueStruct == NULL || NULL == sub) //判断src与sub的有效性
+    {
+        APP_PRINT_INFO0("Invalid paramter!");
+        return 1;
+    }
+
+//    while(LoopQueueIsEmpty(&UartLoopQueue) == false)//遍历src字符串
+//    {
+//        bp=src;//用于src的遍历
+//        sp=sub;//用于sub的遍历
+//        do
+//        {            //遍历sub字符串
+//            if(!*sp)//如果到了sub字符串结束符位置
+//                return 0;//表示找到了sub字符串,退出
+//        }while(*bp++ == *sp++);
+//        src += 1;
+//    }
+
+
+    uint16_t pReadIdx = 0;
+    uint16_t pReadIdx0 = 0;
+    pReadIdx = pQueueStruct->ReadIndex;
+    for (; pReadIdx !=  pQueueStruct->WriteIndex;)
+    {
+        pReadIdx0 = pReadIdx;
+        sp = sub;//用于sub的遍历
+
+        for (; *sp != '\0';)
+        {
+            if (*sp != pQueueStruct->buf[pReadIdx0])
+            {
+                break;
+            }
+
+            sp ++;
+            pReadIdx0 = (pReadIdx0 + 1) & UART_QUEUE_CAPABILITY;
+        }
+
+        if (*sp == '\0')
+        {
+            return 0;
+        }
+
+        pReadIdx = (pReadIdx + 1) & UART_QUEUE_CAPABILITY;
+    }
+    return 1;
 }
 
 /**

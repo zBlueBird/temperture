@@ -18,6 +18,8 @@
 extern "C" {
 #endif
 
+#define MP_TEST_MODE_SUPPORT_DATA_UART_TEST    1
+
 /*******************************************************
 *              LED Module Config
 *******************************************************/
@@ -42,8 +44,8 @@ extern "C" {
 
 
 
-#define DATA_UART_TX_PIN    P0_5
-#define DATA_UART_RX_PIN    P0_6
+#define DATA_UART_TX_PIN    P3_0//P0_5
+#define DATA_UART_RX_PIN    P3_1//P0_6
 
 /* if use user define dlps enter/dlps exit callback function */
 #define USE_USER_DEFINE_DLPS_EXIT_CB      0
