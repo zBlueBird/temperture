@@ -179,13 +179,15 @@ void voice_mac_config(void *p_data)
  * @return none
  * @retval void
  */
+extern UartLoopQueue_TypeDef   UartLoopQueue;
 void uart_test_handle_uart_msg(T_IO_MSG io_driver_msg_recv)
 {
-    UART_PacketTypeDef *pUartTestPacket = (UART_PacketTypeDef *)(io_driver_msg_recv.u.buf);
-    if (Packet_Decode(pUartTestPacket))
-    {
-        ;//uart_test_get_cmd_func(pUartTestPacket);
-    }
+    //LoopQueuePrint(&UartLoopQueue);
+//    UART_PacketTypeDef *pUartTestPacket = (UART_PacketTypeDef *)(io_driver_msg_recv.u.buf);
+//    if (Packet_Decode(pUartTestPacket))
+//    {
+//        ;//uart_test_get_cmd_func(pUartTestPacket);
+//    }
 }
 /**
   * @brief  Get the spefied uart command.

@@ -54,15 +54,20 @@ UART_PacketTypeDef UART_Packet;
 
 const stg_AT_Cmd AtCMD[] =
 {
-    {"AT+CWMODE?", "OK"},
-    {"AT+CWLAP", "OK"},//scan wifi
-    {"AT+CWJAP=\"Yuyin01\",\"33334444\"", "OK"},
-    {"AT+CIPMUX=1", "OK"},
-    {"AT+CIPSERVER=1,5000", "OK"},
-    {"AT+CIFSR", "OK"},
-    {"", "0,CONNECT"},
-    {"AT+CIPSEND=0,4", "OK"},
-    {"AT+RST", NULL},
+    {"AT+CWMODE?\r\n", "OK"},//0
+    {"AT+CWLAP\r\n", "OK"},//1 scan wifi
+    {"AT+CWJAP=\"Yuyin01\",\"33334444\"\r\n", "OK"},//2
+    {"AT+CIPMUX=1\r\n", "OK"},//3
+    {"AT+CIPSERVER=1,5000\r\n", "OK"},//4
+    {"AT+CIFSR\r\n", "OK"},//5
+    {"", "0,CONNECT"},//6
+    {"AT+CIPSEND=0,4\r\n", "OK"},//7
+    {"AT+RST\r\n", NULL},//8
+    {"", "WIFI GOT IP"},//9
+    {"", "WIFI CONNECTED"},//10
+    {"", "WIFI DISCONNECT"},//11
+    {"AT+CIPSTATUS\r\n", "STATUS:5"},//12 link lost
+    {"AT+CIPSTATUS\r\n", "STATUS:2"},//13 link status
 };
 
 /* For CRC check */
@@ -78,14 +83,14 @@ typedef unsigned char    FAR *LPBYTE;
 extern uint16_t btxfcs(WORD fcs, BYTE FAR *cp, WORD len);
 
 void DataUartTestIntrHandler(void);
-const uint8_t LoopQueueFindString(UartLoopQueue_TypeDef *pQueueStruct, const char *sub);
+uint8_t LoopQueueFindString(UartLoopQueue_TypeDef *pQueueStruct, const char *sub);
 
 /**
   * @brief  Initializes loop queue to their default reset values.
   * @param  pPacket: point to loop queue data structure.
   * @retval None
   */
-static void LoopQueueInit(UartLoopQueue_TypeDef *pQueueStruct)
+void LoopQueueInit(UartLoopQueue_TypeDef *pQueueStruct)
 {
     uint16_t i = 0;
 
@@ -100,7 +105,8 @@ static void LoopQueueInit(UartLoopQueue_TypeDef *pQueueStruct)
         pQueueStruct->buf[i] = 0;
     }
 }
-static inline bool LoopQueueIsEmpty(UartLoopQueue_TypeDef *pQueueStruct)
+
+bool LoopQueueIsEmpty(UartLoopQueue_TypeDef *pQueueStruct)
 {
     if (((pQueueStruct->ReadIndex)&UART_QUEUE_CAPABILITY) == pQueueStruct->WriteIndex)
     {
@@ -109,12 +115,33 @@ static inline bool LoopQueueIsEmpty(UartLoopQueue_TypeDef *pQueueStruct)
     return false;
 
 }
+
+void LoopQueuePrint(UartLoopQueue_TypeDef *pQueueStruct)
+{
+    if (pQueueStruct == NULL)
+    {
+        return;
+    }
+    uint16_t readIdx = pQueueStruct->ReadIndex;
+    while (readIdx != pQueueStruct->WriteIndex)
+    {
+        //LoopQueueOut(pQueueStruct, &data, sizeof(data));
+        APP_PRINT_INFO3("[Temp] buf[%#x] = %#x, pQueueStruct->WriteIndex = %#x",
+                        readIdx,
+                        pQueueStruct->buf[readIdx],
+                        pQueueStruct->WriteIndex);
+
+        readIdx = (readIdx + 1) & UART_QUEUE_CAPABILITY;
+
+    }
+    return;
+}
 /**
   * @brief  check loop queue if full or not.
   * @param  pQueueStruct: point to loop queue dta struct.
   * @retval The new state of loop queue (full:TRUE, not full:FALSE).
   */
-static inline bool LoopQueueIsFull(UartLoopQueue_TypeDef *pQueueStruct)
+bool LoopQueueIsFull(UartLoopQueue_TypeDef *pQueueStruct)
 {
 //    if (write_size > UART_LOOP_QUEUE_MAX_SIZE)
 //          return true;
@@ -127,7 +154,7 @@ static inline bool LoopQueueIsFull(UartLoopQueue_TypeDef *pQueueStruct)
 
 }
 
-static inline bool LoopQueueIn(UartLoopQueue_TypeDef *pQueueStruct, uint8_t *pBuf, uint16_t size)
+bool LoopQueueIn(UartLoopQueue_TypeDef *pQueueStruct, uint8_t *pBuf, uint16_t size)
 {
     for (uint8_t index = 0; index < size; index ++)
     {
@@ -141,7 +168,7 @@ static inline bool LoopQueueIn(UartLoopQueue_TypeDef *pQueueStruct, uint8_t *pBu
     return true;
 }
 
-static inline bool LoopQueueOut(UartLoopQueue_TypeDef *pQueueStruct, uint8_t *pBuf, uint16_t size)
+bool LoopQueueOut(UartLoopQueue_TypeDef *pQueueStruct, uint8_t *pBuf, uint16_t size)
 {
     for (uint8_t index = 0; index < size; index ++)
     {
@@ -153,6 +180,89 @@ static inline bool LoopQueueOut(UartLoopQueue_TypeDef *pQueueStruct, uint8_t *pB
         }
     }
     return true;
+}
+
+uint8_t LoopQueueClear(UartLoopQueue_TypeDef *pQueueStruct)
+{
+    if (pQueueStruct == NULL)
+    {
+        return false;
+    }
+
+    pQueueStruct->ReadIndex = pQueueStruct->WriteIndex;
+    return true;
+}
+//查找字符串中的某个字符串的位置
+uint8_t LoopQueueFindString(UartLoopQueue_TypeDef *pQueueStruct, const char *sub)
+{
+    //const char *bp;
+    const char *sp;
+    if (pQueueStruct == NULL || NULL == sub) //判断src与sub的有效性
+    {
+        APP_PRINT_INFO0("Invalid paramter!");
+        return 1;
+    }
+
+//    while(LoopQueueIsEmpty(&UartLoopQueue) == false)//遍历src字符串
+//    {
+//        bp=src;//用于src的遍历
+//        sp=sub;//用于sub的遍历
+//        do
+//        {            //遍历sub字符串
+//            if(!*sp)//如果到了sub字符串结束符位置
+//                return 0;//表示找到了sub字符串,退出
+//        }while(*bp++ == *sp++);
+//        src += 1;
+//    }
+
+
+    uint16_t pReadIdx = 0;
+    uint16_t pReadIdx0 = 0;
+    pReadIdx = pQueueStruct->ReadIndex;
+    for (; pReadIdx !=  pQueueStruct->WriteIndex;)
+    {
+        pReadIdx0 = pReadIdx;
+        sp = sub;//用于sub的遍历
+
+        for (; *sp != '\0';)
+        {
+            if (*sp != pQueueStruct->buf[pReadIdx0])
+            {
+                break;
+            }
+
+            sp ++;
+            pReadIdx0 = (pReadIdx0 + 1) & UART_QUEUE_CAPABILITY;
+        }
+
+        if (*sp == '\0')
+        {
+            return 0;
+        }
+
+        pReadIdx = (pReadIdx + 1) & UART_QUEUE_CAPABILITY;
+    }
+    return 1;
+}
+
+uint8_t ESP8266_Cmd_Send(uint8_t *pCmdBuf)
+{
+    if (pCmdBuf == NULL)
+    {
+        return 1;
+    }
+
+    //uint8_t buf[12] = {0x41, 0x54, 0x2B, 0x43, 0x57, 0x4D, 0x4F, 0x44, 0x45, 0x3F, 0x0D, 0x0A};
+    for (uint8_t index = 0; pCmdBuf[index] != '\0'; index++)
+    {
+        /* send left bytes */
+        UART_SendData(UART, (uint8_t *)(pCmdBuf + index), 1);
+        /* wait tx fifo empty */
+        while (UART_GetFlagState(UART, UART_FLAG_THR_TSR_EMPTY) != SET);
+    }
+
+    return 0;
+
 }
 
 #if 0
@@ -314,15 +424,7 @@ void UARTCmd_Response(uint16_t opcode, uint8_t status, uint8_t *pPayload, uint32
     while (UART_GetFlagState(UART, UART_FLAG_THR_TSR_EMPTY) != SET);
 }
 
-void UARTCmd_Send(void)
-{
-    uint8_t buf[12] = {0x41, 0x54, 0x2B, 0x43, 0x57, 0x4D, 0x4F, 0x44, 0x45, 0x3F, 0x0D, 0x0A};
 
-    /* send left bytes */
-    UART_SendData(UART, buf, 12);
-    /* wait tx fifo empty */
-    while (UART_GetFlagState(UART, UART_FLAG_THR_TSR_EMPTY) != SET);
-}
 
 /**
   * @brief  decode uart packet.
@@ -336,72 +438,21 @@ bool Packet_Decode(UART_PacketTypeDef *pPacket)
 //            APP_PRINT_INFO1("[Temp] => %#x", UartLoopQueue.buf[UartLoopQueue.ReadIndex]);
 //            UartLoopQueue.ReadIndex = (UartLoopQueue.ReadIndex + 1) % UART_QUEUE_CAPABILITY;
 //    }
-    const uint8_t LoopQueueFindString(UartLoopQueue_TypeDef * pQueueStruct, const char *sub);
-    if (0 == LoopQueueFindString(&UartLoopQueue, "AT+CWJAP=\"Yuyin01\",\"33334444\""))
-    {
-        APP_PRINT_INFO0("Packet_Decode success");
-    }
-    else
-    {
-        APP_PRINT_INFO0("Packet_Decode failed");
-    }
+//    uint8_t LoopQueueFindString(UartLoopQueue_TypeDef * pQueueStruct, const char *sub);
+//    if (0 == LoopQueueFindString(&UartLoopQueue, "AT+CWJAP=\"Yuyin01\",\"33334444\""))
+//    {
+//        APP_PRINT_INFO0("Packet_Decode success");
+//    }
+//    else
+//    {
+//        APP_PRINT_INFO0("Packet_Decode failed");
+//    }
 
-    LoopQueueInit(&UartLoopQueue);
+//    LoopQueueInit(&UartLoopQueue);
+
     return true;//UARTPacket_Decode(&UartLoopQueue, pPacket);
 }
 
-//查找字符串中的某个字符串的位置
-const uint8_t LoopQueueFindString(UartLoopQueue_TypeDef *pQueueStruct, const char *sub)
-{
-    const char *bp;
-    const char *sp;
-    if (pQueueStruct == NULL || NULL == sub) //判断src与sub的有效性
-    {
-        APP_PRINT_INFO0("Invalid paramter!");
-        return 1;
-    }
-
-//    while(LoopQueueIsEmpty(&UartLoopQueue) == false)//遍历src字符串
-//    {
-//        bp=src;//用于src的遍历
-//        sp=sub;//用于sub的遍历
-//        do
-//        {            //遍历sub字符串
-//            if(!*sp)//如果到了sub字符串结束符位置
-//                return 0;//表示找到了sub字符串,退出
-//        }while(*bp++ == *sp++);
-//        src += 1;
-//    }
-
-
-    uint16_t pReadIdx = 0;
-    uint16_t pReadIdx0 = 0;
-    pReadIdx = pQueueStruct->ReadIndex;
-    for (; pReadIdx !=  pQueueStruct->WriteIndex;)
-    {
-        pReadIdx0 = pReadIdx;
-        sp = sub;//用于sub的遍历
-
-        for (; *sp != '\0';)
-        {
-            if (*sp != pQueueStruct->buf[pReadIdx0])
-            {
-                break;
-            }
-
-            sp ++;
-            pReadIdx0 = (pReadIdx0 + 1) & UART_QUEUE_CAPABILITY;
-        }
-
-        if (*sp == '\0')
-        {
-            return 0;
-        }
-
-        pReadIdx = (pReadIdx + 1) & UART_QUEUE_CAPABILITY;
-    }
-    return 1;
-}
 
 /**
   * @brief  Data UART interrupt handle.
@@ -459,6 +510,7 @@ void DataUartTestIntrHandler(void)
                     UART_ReceiveData(UART, &UartLoopQueue.buf[UartLoopQueue.WriteIndex], UART_RX_TRIGGER_VALUE);
                     UartLoopQueue.WriteIndex = (UartLoopQueue.WriteIndex + UART_RX_TRIGGER_VALUE) &
                                                UART_QUEUE_CAPABILITY;
+
                 }
                 else
                 {

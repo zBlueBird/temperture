@@ -30,10 +30,22 @@ extern "C" {
 #define UART_PRINT_LOG
 
 /* Configure loop queue parameters */
-#define UART_LOOP_QUEUE_MAX_SIZE             (512)
+#define UART_LOOP_QUEUE_MAX_SIZE             (512 * 2)
 #define UART_QUEUE_CAPABILITY                (UART_LOOP_QUEUE_MAX_SIZE-1)
 /* Configure UART packet buffer length */
 #define CMD_SIZE                        50
+
+#define  ESP_GET_MODE                             0x00
+#define  ESP_SCAN_WIFI                            0x01
+#define  ESP_CONNECT_AP                           0x02
+#define  ESP_SET_LINK_MUX                         0x03
+#define  ESP_CONFIG_SERER_INDEX                   0x04
+#define  ESP_CHECK_IP_ADDR_INDEX                  0x05
+#define  ESP_GOT_IP_INDEX                         0x09
+#define  ESP_WIFI_CONNECTED_INDEX                 0x0A
+#define  ESP_WIFI_DISCONNECT_INDEX                0x0B
+#define  ESP_WIFI_STATUS_CONNECT_INDEX            0x0C
+#define  ESP_WIFI_STATUS_DISCONNECT_INDEX         0x0D
 
 #ifdef UART_PRINT_LOG
 #define UART_DBG_BUFFER(MODULE, LEVEL, fmt, para_num,...) DBG_BUFFER_##LEVEL(TYPE_BEE2, SUBTYPE_FORMAT, MODULE, fmt, para_num, ##__VA_ARGS__)
@@ -67,7 +79,7 @@ typedef enum
 typedef struct
 {
     uint8_t send_cmd[50];
-    uint8_t ret_str[10];
+    uint8_t ret_str[50];
 } stg_AT_Cmd;
 
 /* UART packet data structure */
@@ -85,6 +97,14 @@ void DataUARTInit(uint8_t buadrate_opt);
 void UartTransport_Init(void);
 bool Packet_Decode(UART_PacketTypeDef *pPacket);
 void UARTCmd_Response(uint16_t opcode, uint8_t status, uint8_t *pPayload, uint32_t payload_len);
+
+bool LoopQueueIsEmpty(UartLoopQueue_TypeDef *pQueueStruct);
+bool LoopQueueIsFull(UartLoopQueue_TypeDef *pQueueStruct);
+uint8_t LoopQueueFindString(UartLoopQueue_TypeDef *pQueueStruct, const char *sub);
+uint8_t LoopQueueClear(UartLoopQueue_TypeDef *pQueueStruct);
+uint8_t ESP8266_Cmd_Send(uint8_t *pCmdBuf);
+bool LoopQueueOut(UartLoopQueue_TypeDef *pQueueStruct, uint8_t *pBuf, uint16_t size);
+void LoopQueuePrint(UartLoopQueue_TypeDef *pQueueStruct);
 
 #ifdef __cplusplus
 }
